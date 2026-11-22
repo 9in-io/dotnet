@@ -15,7 +15,7 @@ internal static class JwksCache
     private static readonly TimeSpan MissThrottle = TimeSpan.FromSeconds(60);
 
     private static readonly ConcurrentDictionary<string, (IReadOnlyList<JsonWebKey> Keys, DateTimeOffset FetchedAt)> Keys = new(StringComparer.Ordinal);
-    private static readonly ConcurrentDictionary<string, Task<IReadOnlyList<JsonWebKey>>> Fetches = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Lazy<Task<IReadOnlyList<JsonWebKey>>>> Fetches = new(StringComparer.Ordinal);
     private static readonly ConcurrentDictionary<string, DateTimeOffset> MissingKids = new(StringComparer.Ordinal);
 
     public static async Task<JsonWebKey?> FindAsync(string issuer, string? kid, NineHttp http, TimeProvider time, CancellationToken cancellationToken)
@@ -51,17 +51,17 @@ internal static class JwksCache
         {
             return hit.Keys;
         }
-        // Concurrent callers share one fetch.
-        var fetch = Fetches.GetOrAdd(issuer, _ => FetchAsync(issuer, http, time));
+        // Concurrent callers share one fetch (Lazy: only the stored entry starts it).
+        var fetch = Fetches.GetOrAdd(issuer, _ => new Lazy<Task<IReadOnlyList<JsonWebKey>>>(() => FetchAsync(issuer, http, time)));
         try
         {
-            return await fetch.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return await fetch.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
-            if (fetch.IsCompleted)
+            if (fetch.Value.IsCompleted)
             {
-                Fetches.TryRemove(new KeyValuePair<string, Task<IReadOnlyList<JsonWebKey>>>(issuer, fetch));
+                Fetches.TryRemove(new KeyValuePair<string, Lazy<Task<IReadOnlyList<JsonWebKey>>>>(issuer, fetch));
             }
         }
     }

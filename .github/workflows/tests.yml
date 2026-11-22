@@ -1,0 +1,64 @@
+# Unit and ASP.NET Core integration tests on .NET 8 and .NET 10, on Linux, Windows and macOS
+# (the crypto goes through each platform's own provider), plus a check that both packages pack.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Build
+        run: dotnet build Nine.slnx -c Release
+
+      # The live tests (test/Nine.E2E) skip themselves without NINE_E2E=1.
+      - name: Test (.NET 8 and .NET 10)
+        run: dotnet test Nine.slnx -c Release --no-build
+
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Pack
+        run: |
+          dotnet pack src/Nine/Nine.csproj -c Release
+          dotnet pack src/Nine.AspNetCore/Nine.AspNetCore.csproj -c Release
+
+      - name: Check the packages
+        run: |
+          ls -l artifacts/package/release
+          for package in artifacts/package/release/*.nupkg; do
+            unzip -l "$package" | grep -E 'README.md|logo.png|\.dll$' || { echo "::error::$package is missing files"; exit 1; }
+          done

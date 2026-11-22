@@ -1,0 +1,59 @@
+# Pushing a version tag (v1.2.3) packs 9in and 9in.AspNetCore and publishes them to nuget.org with NuGet
+# trusted publishing: GitHub's OIDC token is exchanged for a short-lived API key (NuGet/login), for the
+# nuget.org account in the repository variable NUGET_USER. A NUGET_API_KEY secret is used instead when the
+# trusted publishing policy isn't set up. Symbols (.snupkg) go with each package.
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Check the tag matches the version
+        run: |
+          version="$(grep -oE '<Version>[^<]+' Directory.Build.props | head -1 | sed 's/<Version>//')"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match <Version>$version</Version> in Directory.Build.props"
+            exit 1
+          fi
+
+      - name: Test
+        run: dotnet test Nine.slnx -c Release
+
+      - name: Pack
+        run: |
+          dotnet pack src/Nine/Nine.csproj -c Release
+          dotnet pack src/Nine.AspNetCore/Nine.AspNetCore.csproj -c Release
+
+      - name: NuGet login (trusted publishing)
+        id: login
+        if: ${{ vars.NUGET_USER != '' }}
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY || secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::error::set the NUGET_USER variable (trusted publishing) or a NUGET_API_KEY secret"
+            exit 1
+          fi
+          dotnet nuget push "artifacts/package/release/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate

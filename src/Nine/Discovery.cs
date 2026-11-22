@@ -35,28 +35,33 @@ public sealed record Discovery
 /// <summary>Discovery documents, cached per issuer for an hour in this process (a failed fetch is not cached).</summary>
 internal static class DiscoveryCache
 {
-    private static readonly ConcurrentDictionary<string, (Task<Discovery> Task, long FetchedAt)> Cache = new(StringComparer.Ordinal);
+    private sealed class Entry(Func<Task<Discovery>> fetch, long fetchedAt)
+    {
+        // Lazy: AddOrUpdate may build several entries under contention, but only the stored one fetches.
+        private readonly Lazy<Task<Discovery>> _task = new(fetch, LazyThreadSafetyMode.ExecutionAndPublication);
+
+        public Task<Discovery> Task => _task.Value;
+        public long FetchedAt { get; } = fetchedAt;
+        public bool Failed => _task.IsValueCreated && _task.Value.IsFaulted;
+    }
+
+    private static readonly ConcurrentDictionary<string, Entry> Cache = new(StringComparer.Ordinal);
     private static readonly TimeSpan Ttl = TimeSpan.FromHours(1);
 
     public static async Task<Discovery> GetAsync(string issuer, NineHttp http, TimeProvider time, CancellationToken cancellationToken)
     {
         var now = time.GetTimestamp();
-        if (Cache.TryGetValue(issuer, out var hit) && time.GetElapsedTime(hit.FetchedAt, now) < Ttl)
-        {
-            if (!hit.Task.IsCompleted || hit.Task.IsCompletedSuccessfully)
-            {
-                return await hit.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
-        var task = FetchAsync(issuer, http);
-        Cache[issuer] = (task, now);
+        var entry = Cache.AddOrUpdate(
+            issuer,
+            _ => new Entry(() => FetchAsync(issuer, http), now),
+            (_, existing) => existing.Failed || time.GetElapsedTime(existing.FetchedAt, now) >= Ttl ? new Entry(() => FetchAsync(issuer, http), now) : existing);
         try
         {
-            return await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return await entry.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch
+        catch when (entry.Failed)
         {
-            Cache.TryRemove(new KeyValuePair<string, (Task<Discovery>, long)>(issuer, (task, now)));
+            Cache.TryRemove(new KeyValuePair<string, Entry>(issuer, entry));
             throw;
         }
     }

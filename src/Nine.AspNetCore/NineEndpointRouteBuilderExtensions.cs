@@ -214,7 +214,32 @@ public static class NineEndpointRouteBuilderExtensions
             context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
             return;
         }
-        var adapter = ActivatorUtilities.GetServiceOrCreateInstance<TAdapter>(services);
+        // From dependency injection when registered (its lifetime applies), else created for this request and disposed after it.
+        var registered = services.GetService<TAdapter>();
+        var adapter = registered ?? ActivatorUtilities.CreateInstance<TAdapter>(services);
+        try
+        {
+            await HandleAdapter(context, options, secrets, adapter, body).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (registered is null)
+            {
+                if (adapter is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                }
+                else if (adapter is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+        }
+    }
+
+    private static async Task HandleAdapter(HttpContext context, NineAdapterOptions options, IReadOnlyList<string> secrets, IAdapter adapter, byte[] body)
+    {
+        var services = context.RequestServices;
         var handler = new AdapterHandler(secrets, adapter, options.Tolerance, services.GetRequiredService<TimeProvider>());
         var path = options.PathPrefix is { } prefix
             ? prefix.TrimEnd('/') + context.Request.Path.Value![context.Request.Path.Value!.LastIndexOf('/')..]
