@@ -52,17 +52,20 @@ internal static class JwksCache
             return hit.Keys;
         }
         // Concurrent callers share one fetch (Lazy: only the stored entry starts it).
-        var fetch = Fetches.GetOrAdd(issuer, _ => new Lazy<Task<IReadOnlyList<JsonWebKey>>>(() => FetchAsync(issuer, http, time)));
+        // It leaves the table when it finishes, even if every caller gave up first.
+        var fetch = Fetches.GetOrAdd(issuer, _ => new Lazy<Task<IReadOnlyList<JsonWebKey>>>(() => FetchOnceAsync(issuer, http, time)));
+        return await fetch.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<IReadOnlyList<JsonWebKey>> FetchOnceAsync(string issuer, NineHttp http, TimeProvider time)
+    {
         try
         {
-            return await fetch.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return await FetchAsync(issuer, http, time).ConfigureAwait(false);
         }
         finally
         {
-            if (fetch.Value.IsCompleted)
-            {
-                Fetches.TryRemove(new KeyValuePair<string, Lazy<Task<IReadOnlyList<JsonWebKey>>>>(issuer, fetch));
-            }
+            Fetches.TryRemove(issuer, out _);
         }
     }
 

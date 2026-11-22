@@ -205,19 +205,10 @@ public sealed class HybridTokenVerifier : IAccessTokenVerifier
             }
         }
 
-        var lazy = _inflight.GetOrAdd(key, _ => new Lazy<Task<ClaimSet?>>(() => IntrospectAsync(token)));
-        ClaimSet? answer;
-        try
-        {
-            answer = await lazy.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            if (lazy.Value.IsCompleted)
-            {
-                _inflight.TryRemove(new KeyValuePair<string, Lazy<Task<ClaimSet?>>>(key, lazy));
-            }
-        }
+        // Concurrent callers share one introspection; it leaves the table when it finishes, even if every
+        // caller gave up first, so a later call never reuses an old answer.
+        var lazy = _inflight.GetOrAdd(key, _ => new Lazy<Task<ClaimSet?>>(() => IntrospectOnceAsync(key, token)));
+        var answer = await lazy.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
         var claims = answer is not null && local is not null ? local : answer;
 
         if (Mode == VerificationMode.Hybrid)
@@ -254,6 +245,18 @@ public sealed class HybridTokenVerifier : IAccessTokenVerifier
             }
         }
         return false;
+    }
+
+    private async Task<ClaimSet?> IntrospectOnceAsync(string key, string token)
+    {
+        try
+        {
+            return await IntrospectAsync(token).ConfigureAwait(false);
+        }
+        finally
+        {
+            _inflight.TryRemove(key, out _);
+        }
     }
 
     private async Task<ClaimSet?> IntrospectAsync(string token)

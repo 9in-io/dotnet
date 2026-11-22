@@ -207,6 +207,22 @@ public class WebAppTests
     }
 
     [Fact]
+    public async Task ACrossSiteLogoutIsRefused()
+    {
+        await using var app = new NineAppFactory(new FakeOidc());
+        var browser = app.Browser();
+        await app.SignInAsync(browser);
+        var forged = new HttpRequestMessage(HttpMethod.Get, "/nine/logout");
+        forged.Headers.Add("Sec-Fetch-Site", "cross-site");
+        Assert.Equal(HttpStatusCode.Forbidden, (await browser.SendAsync(forged)).StatusCode);
+        Assert.Empty(app.Oidc.Revoked);
+        Assert.Equal("usr_jane", (await Json(await browser.GetAsync("/me"))).GetProperty("sub").GetString());
+        var own = new HttpRequestMessage(HttpMethod.Get, "/nine/logout");
+        own.Headers.Add("Sec-Fetch-Site", "same-origin");
+        Assert.Equal(HttpStatusCode.Redirect, (await browser.SendAsync(own)).StatusCode);
+    }
+
+    [Fact]
     public async Task LocalLogoutStaysInTheApp()
     {
         await using var app = new NineAppFactory(new FakeOidc());

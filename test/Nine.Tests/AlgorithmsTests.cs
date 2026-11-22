@@ -149,6 +149,18 @@ public class AlgorithmsTests
     }
 
     [Fact]
+    public async Task AcceptsAnRsaModulusWithALeadingZeroByte()
+    {
+        var fake = new FakeIssuer();
+        var key = TestKey.Create("RS256", "zero");
+        var n = Convert.FromBase64String(Pad((string)key.Jwk!["n"]!));
+        key.Jwk["n"] = TestJwt.B64([0, .. n]);
+        fake.AddKey(key);
+        var verifier = new TokenVerifier(new TokenVerifierOptions { Issuer = fake.Issuer }, fake.Client());
+        Assert.Equal("usr_2", (await verifier.VerifyAsync(TestJwt.Sign(key, Claims(fake.Issuer)))).Subject);
+    }
+
+    [Fact]
     public async Task AcceptsTheMediaTypeFormOfTyp()
     {
         var fake = new FakeIssuer();

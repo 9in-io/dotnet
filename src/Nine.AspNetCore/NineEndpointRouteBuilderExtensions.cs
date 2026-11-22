@@ -20,7 +20,7 @@ public static class NineEndpointRouteBuilderExtensions
     /// <list type="bullet">
     /// <item><description><c>GET /nine/login?return_to=/dashboard</c>: goes to the 9in sign-in page (also takes <c>prompt</c>, <c>login_hint</c>, <c>locale</c>).</description></item>
     /// <item><description><c>GET /nine/signup</c>: goes to the sign-up form.</description></item>
-    /// <item><description><c>GET|POST /nine/logout?return_to=/</c>: revokes the refresh token, ends the session here and at 9in (<c>local=1</c>: here only).</description></item>
+    /// <item><description><c>GET|POST /nine/logout?return_to=/</c>: revokes the refresh token, ends the session here and at 9in (<c>local=1</c>: here only). Refused (403) when the browser says the request came from another site.</description></item>
     /// </list>
     /// </summary>
     public static RouteGroupBuilder MapNineWebApp(this IEndpointRouteBuilder endpoints)
@@ -67,6 +67,13 @@ public static class NineEndpointRouteBuilderExtensions
 
     private static async Task Logout(HttpContext context)
     {
+        // A link or form on another site must not sign the user out (browsers say where a request came from).
+        string? site = context.Request.Headers["Sec-Fetch-Site"];
+        if (site is not null && site != "same-origin" && site != "none")
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
         var app = context.RequestServices.GetRequiredService<NineWebApp>();
         var web = app.Options;
         var session = await context.AuthenticateAsync(web.CookieScheme).ConfigureAwait(false);
@@ -140,7 +147,17 @@ public static class NineEndpointRouteBuilderExtensions
         {
             await verifier.HandleEventAsync(webhookEvent, context.RequestAborted).ConfigureAwait(false);
         }
-        if (services.GetService<HybridTokenVerifier>() is { } registered)
+        HybridTokenVerifier? registered = null;
+        try
+        {
+            registered = services.GetService<HybridTokenVerifier>();
+        }
+        catch (NineException e)
+        {
+            // AddNine() registered one whose settings are incomplete; it can't have cached anything.
+            services.GetRequiredService<ILoggerFactory>().CreateLogger("Nine.AspNetCore").LogWarning("The registered HybridTokenVerifier can't be created: {Error} {Description}", e.Error, e.ErrorDescription);
+        }
+        if (registered is not null)
         {
             await registered.HandleEventAsync(webhookEvent, context.RequestAborted).ConfigureAwait(false);
         }

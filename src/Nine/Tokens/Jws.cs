@@ -44,10 +44,12 @@ internal static class Jws
                 case 'R':
                 case 'P':
                 {
-                    using var rsa = RSA.Create(new RSAParameters { Modulus = JsonWebKey.Bytes(jwk.N, "n"), Exponent = JsonWebKey.Bytes(jwk.E, "e") });
+                    // Some encoders keep a leading zero byte on n; the modulus itself doesn't have one.
+                    var modulus = JsonWebKey.Bytes(jwk.N, "n").AsSpan().TrimStart((byte)0).ToArray();
+                    using var rsa = RSA.Create(new RSAParameters { Modulus = modulus, Exponent = JsonWebKey.Bytes(jwk.E, "e") });
                     // RSASSA-PSS with the salt as long as the hash, as JWS requires (RFC 7518 §3.5).
                     var padding = alg[0] == 'P' ? RSASignaturePadding.Pss : RSASignaturePadding.Pkcs1;
-                    return signature.Length == rsa.KeySize / 8 && rsa.VerifyData(input, signature, Hash(alg), padding);
+                    return signature.Length == modulus.Length && rsa.VerifyData(input, signature, Hash(alg), padding);
                 }
                 case 'E' when alg == "EdDSA":
                     return Ed25519.Verify(JsonWebKey.Bytes(jwk.X, "x"), input, signature);

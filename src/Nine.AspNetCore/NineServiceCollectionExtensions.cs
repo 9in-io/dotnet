@@ -55,7 +55,7 @@ public static class NineServiceCollectionExtensions
             var options = new HybridTokenVerifierOptions
             {
                 Issuer = nine.RequireIssuer(),
-                Audience = nine.ApiAudience,
+                Audience = nine.EffectiveApiAudience,
                 ClientId = nine.ClientId,
                 ClientSecret = nine.ClientSecret,
                 Secret = nine.ApiSecret,

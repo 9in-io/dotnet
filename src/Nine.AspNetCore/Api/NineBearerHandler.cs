@@ -50,7 +50,7 @@ public sealed class NineBearerHandler : AuthenticationHandler<NineBearerOptions>
             Context.Items[FailureItem] = e;
             return AuthenticateResult.Fail(e);
         }
-        catch (NineException e)
+        catch (NineException e) when (e.Error != "invalid_options")
         {
             // 9in couldn't be asked (JWKS or introspection): not the client's fault.
             Logger.LogWarning("9in token check failed: {Error} {Description}", e.Error, e.ErrorDescription);

@@ -33,6 +33,9 @@ public sealed class NineOptions
     /// <summary><c>Nine:AllowInsecureIssuer</c> / <c>NINE_ALLOW_INSECURE_ISSUER</c>: accept a plain-http issuer other than localhost (development only).</summary>
     public bool AllowInsecureIssuer { get; set; }
 
+    /// <summary>The API audience in effect: <see cref="ApiAudience"/>, else <see cref="Audience"/>.</summary>
+    internal string? EffectiveApiAudience => ApiAudience ?? Audience;
+
     internal string RequireIssuer() => Issuer is { Length: > 0 } issuer
         ? issuer
         : throw new NineException("invalid_options", "the 9in issuer is missing: set Nine:Issuer in configuration or NINE_ISSUER");
@@ -57,7 +60,7 @@ internal sealed class NineOptionsSetup(IConfiguration? configuration = null) : I
         options.ClientSecret ??= Read("ClientSecret", "CLIENT_SECRET");
         options.RedirectUri ??= Read("RedirectUri", "REDIRECT_URI");
         options.Audience ??= Read("Audience", "AUDIENCE");
-        options.ApiAudience ??= Read("ApiAudience", "API_AUDIENCE") ?? options.Audience;
+        options.ApiAudience ??= Read("ApiAudience", "API_AUDIENCE");
         options.ApiSecret ??= Read("ApiSecret", "API_SECRET");
         options.TokenMode ??= Read("TokenMode", "TOKEN_MODE");
         options.WebhookSecret ??= Read("WebhookSecret", "WEBHOOK_SECRET");

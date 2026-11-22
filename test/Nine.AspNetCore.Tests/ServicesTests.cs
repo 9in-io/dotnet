@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using System.Net;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
@@ -31,7 +32,8 @@ public class ServicesTests
             using var provider = Build(new() { ["Nine:Issuer"] = "https://acme.9in.io", ["Nine:Audience"] = "https://api.acme.test", ["Nine:AllowInsecureIssuer"] = "true" });
             var options = provider.GetRequiredService<IOptions<NineOptions>>().Value;
             Assert.Equal("https://acme.9in.io", options.Issuer);
-            Assert.Equal("https://api.acme.test", options.ApiAudience); // defaults to Audience
+            Assert.Null(options.ApiAudience);
+            Assert.Equal("https://api.acme.test", options.EffectiveApiAudience); // defaults to Audience
             Assert.Equal("from-env", options.WebhookSecret);
             Assert.True(options.AllowInsecureIssuer);
         }
@@ -110,4 +112,40 @@ public class ServicesTests
         Assert.Equal(1, oidc.Server.Count("POST", "/oauth/token"));
         Assert.Equal("orders:read", oidc.Server.Last("/oauth/token").Form["scope"]);
     }
+}
+
+public class CustomSchemeTests
+{
+    [Fact]
+    public async Task RequireScopeWorksWithACustomBearerSchemeName()
+    {
+        var oidc = new FakeOidc();
+        var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServerForTests();
+        builder.Configuration["Nine:Issuer"] = oidc.Issuer;
+        builder.Configuration["Nine:Audience"] = NineAppFactory.ApiAudience;
+        builder.Services.AddAuthentication().AddNineApi("Api");
+        builder.Services.AddHttpClient(NineDefaults.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => oidc.Server);
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/orders", () => "ok").RequireScope("orders:read");
+        await app.StartAsync();
+        var client = app.GetTestClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/orders");
+        request.Headers.Authorization = new("Bearer", oidc.AccessToken("u", "orders:read", NineAppFactory.ApiAudience));
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(request)).StatusCode);
+        var weak = new HttpRequestMessage(HttpMethod.Get, "/orders");
+        weak.Headers.Authorization = new("Bearer", oidc.AccessToken("u", "other", NineAppFactory.ApiAudience));
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(weak)).StatusCode);
+    }
+}
+
+internal static class TestServerExtensions
+{
+    public static void UseTestServerForTests(this Microsoft.AspNetCore.Hosting.IWebHostBuilder builder) =>
+        Microsoft.AspNetCore.TestHost.WebHostBuilderExtensions.UseTestServer(builder);
+
+    public static HttpClient GetTestClient(this Microsoft.AspNetCore.Builder.WebApplication app) =>
+        ((Microsoft.AspNetCore.TestHost.TestServer)app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>()).CreateClient();
 }

@@ -82,7 +82,7 @@ public static class NineAuthenticationBuilderExtensions
         {
             var shared = nine.Value;
             options.Issuer ??= shared.Issuer;
-            options.Audience ??= shared.ApiAudience;
+            options.Audience ??= shared.EffectiveApiAudience;
             options.ClientId ??= shared.ClientId;
             options.ClientSecret ??= shared.ClientSecret;
             options.Secret ??= shared.ApiSecret;
@@ -93,6 +93,11 @@ public static class NineAuthenticationBuilderExtensions
             }
         });
         builder.AddScheme<NineBearerOptions, NineBearerHandler>(scheme, "9in API", configure);
+        if (scheme != NineDefaults.BearerScheme)
+        {
+            // [RequireScope] and RequireNineToken() name NineDefaults.BearerScheme: forward it to this scheme.
+            builder.AddPolicyScheme(NineDefaults.BearerScheme, "9in API", options => options.ForwardDefault = scheme);
+        }
         services.AddAuthorization();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IAuthorizationHandler, ScopeAuthorizationHandler>());
         services.PostConfigure<AuthenticationOptions>(options =>
