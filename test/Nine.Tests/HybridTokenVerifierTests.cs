@@ -239,6 +239,47 @@ public class HybridTokenVerifierTests
     }
 
     [Fact]
+    public async Task ACancelledCallerLeavesNoStaleAnswerBehind()
+    {
+        // The first introspection is held until the caller has given up; it then finishes with "active".
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var verifier = new HybridTokenVerifier(new HybridTokenVerifierOptions
+        {
+            Issuer = _fake.Issuer, Audience = "https://api.acme.test", ClientId = "api_client", ClientSecret = "api_secret",
+            Mode = VerificationMode.Introspect, TimeProvider = _clock,
+        }, new HttpClient(new GateFirstIntrospection(gate) { InnerHandler = _fake }));
+        var (token, _) = Jwt();
+        using var cancel = new CancellationTokenSource();
+        var first = verifier.VerifyAsync(token, null, cancel.Token);
+        await Task.Delay(50);
+        cancel.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+        gate.SetResult();
+        for (var i = 0; i < 100 && Introspections < 1; i++)
+        {
+            await Task.Delay(10);
+        }
+        await Task.Delay(50); // let the abandoned introspection finish
+        _active.Remove(token); // now 9in says it is revoked
+        await Assert.ThrowsAsync<InvalidTokenException>(() => verifier.VerifyAsync(token));
+        Assert.Equal(2, Introspections);
+    }
+
+    private sealed class GateFirstIntrospection(TaskCompletionSource gate) : DelegatingHandler
+    {
+        private int _seen;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.RequestUri!.AbsolutePath == "/oauth/introspect" && Interlocked.Increment(ref _seen) == 1)
+            {
+                await gate.Task.WaitAsync(cancellationToken);
+            }
+            return await base.SendAsync(request, cancellationToken);
+        }
+    }
+
+    [Fact]
     public async Task IntrospectModeAsksEveryTime()
     {
         var verifier = Verifier(VerificationMode.Introspect);
