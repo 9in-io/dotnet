@@ -19,6 +19,7 @@ jobs:
   test:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +39,7 @@ jobs:
 
       # The live tests (test/Nine.E2E) skip themselves without NINE_E2E=1.
       - name: Test (.NET 8 and .NET 10)
-        run: dotnet test Nine.slnx -c Release --no-build
+        run: dotnet test Nine.slnx -c Release --no-build --blame-hang-timeout 5m
 
   pack:
     runs-on: ubuntu-latest

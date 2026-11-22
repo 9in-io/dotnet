@@ -76,6 +76,7 @@ public sealed class WebhookLog
     public List<string> Typed { get; } = [];
     public int FailNext;
     public TaskCompletionSource? Gate;
+    public TaskCompletionSource? Entered;
 }
 
 public sealed class LoggingWebhookHandler(WebhookLog log) : INineWebhookHandler
@@ -84,6 +85,7 @@ public sealed class LoggingWebhookHandler(WebhookLog log) : INineWebhookHandler
     {
         if (log.Gate is { } gate)
         {
+            log.Entered?.TrySetResult();
             await gate.Task;
         }
         if (Interlocked.Exchange(ref log.FailNext, 0) == 1)

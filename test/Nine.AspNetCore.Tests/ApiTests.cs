@@ -236,18 +236,23 @@ public class WebhookTests
         await using var app = new NineAppFactory(new FakeOidc());
         var client = app.CreateClient();
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Log(app).Entered = entered;
         Log(app).Gate = gate;
         var first = Deliver(client, "user.login", [], "evt_slow");
-        HttpResponseMessage? second = null;
-        for (var i = 0; i < 100 && second?.StatusCode != HttpStatusCode.Conflict; i++)
+        try
         {
-            await Task.Delay(10);
-            second = await Deliver(client, "user.login", [], "evt_slow");
+            // The first delivery has claimed the event and is inside the handler: a second one must get 409.
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            var second = await Deliver(client, "user.login", [], "evt_slow").WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         }
-        Assert.Equal(HttpStatusCode.Conflict, second!.StatusCode);
-        Log(app).Gate = null;
-        gate.SetResult();
-        Assert.Equal(HttpStatusCode.NoContent, (await first).StatusCode);
+        finally
+        {
+            Log(app).Gate = null;
+            gate.TrySetResult();
+        }
+        Assert.Equal(HttpStatusCode.NoContent, (await first.WaitAsync(TimeSpan.FromSeconds(30))).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await Deliver(client, "user.login", [], "evt_slow")).StatusCode);
         Assert.Equal(["evt_slow"], Log(app).Handled);
     }

@@ -34,7 +34,7 @@ jobs:
           fi
 
       - name: Test
-        run: dotnet test Nine.slnx -c Release
+        run: dotnet test Nine.slnx -c Release --blame-hang-timeout 5m
 
       - name: Pack
         run: |
