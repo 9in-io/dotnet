@@ -95,8 +95,16 @@ public static class NineAuthenticationBuilderExtensions
         builder.AddScheme<NineBearerOptions, NineBearerHandler>(scheme, "9in API", configure);
         if (scheme != NineDefaults.BearerScheme)
         {
-            // [RequireScope] and RequireNineToken() name NineDefaults.BearerScheme: forward it to this scheme.
-            builder.AddPolicyScheme(NineDefaults.BearerScheme, "9in API", options => options.ForwardDefault = scheme);
+            // [RequireScope] and RequireNineToken() name NineDefaults.BearerScheme. Without a scheme of that name,
+            // it forwards to the first custom-named 9in API scheme (added once every scheme is known).
+            services.AddOptions<PolicySchemeOptions>(NineDefaults.BearerScheme).Configure(options => options.ForwardDefault ??= scheme);
+            services.PostConfigure<AuthenticationOptions>(options =>
+            {
+                if (!options.SchemeMap.ContainsKey(NineDefaults.BearerScheme))
+                {
+                    options.AddScheme<PolicySchemeHandler>(NineDefaults.BearerScheme, "9in API");
+                }
+            });
         }
         services.AddAuthorization();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IAuthorizationHandler, ScopeAuthorizationHandler>());

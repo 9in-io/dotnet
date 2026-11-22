@@ -116,20 +116,31 @@ public class ServicesTests
 
 public class CustomSchemeTests
 {
-    [Fact]
-    public async Task RequireScopeWorksWithACustomBearerSchemeName()
+    [Theory]
+    [InlineData("custom")]
+    [InlineData("two-custom")]
+    [InlineData("custom-then-default")]
+    public async Task RequireScopeWorksWithCustomBearerSchemeNames(string setup)
     {
         var oidc = new FakeOidc();
-        var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServerForTests();
         builder.Configuration["Nine:Issuer"] = oidc.Issuer;
         builder.Configuration["Nine:Audience"] = NineAppFactory.ApiAudience;
-        builder.Services.AddAuthentication().AddNineApi("Api");
+        var authentication = builder.Services.AddAuthentication().AddNineApi("Api");
+        if (setup == "two-custom")
+        {
+            authentication.AddNineApi("Other", o => o.Audience = "https://other.acme.test");
+        }
+        else if (setup == "custom-then-default")
+        {
+            authentication.AddNineApi();
+        }
         builder.Services.AddHttpClient(NineDefaults.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => oidc.Server);
         await using var app = builder.Build();
         app.UseAuthentication();
         app.UseAuthorization();
-        Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/orders", () => "ok").RequireScope("orders:read");
+        app.MapGet("/orders", () => "ok").RequireScope("orders:read");
         await app.StartAsync();
         var client = app.GetTestClient();
         var request = new HttpRequestMessage(HttpMethod.Get, "/orders");
