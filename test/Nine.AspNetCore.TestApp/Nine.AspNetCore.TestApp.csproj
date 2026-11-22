@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <IsTestProject>false</IsTestProject>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Nine.AspNetCore/Nine.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <!-- Not a test project: drop the test packages the folder's props add. -->
+  <ItemGroup>
+    <PackageReference Remove="Microsoft.NET.Test.Sdk" />
+    <PackageReference Remove="xunit.v3" />
+    <PackageReference Remove="xunit.runner.visualstudio" />
+    <PackageReference Remove="Microsoft.Extensions.TimeProvider.Testing" />
+    <Using Remove="Xunit" />
+  </ItemGroup>
+</Project>

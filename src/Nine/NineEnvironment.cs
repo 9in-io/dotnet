@@ -27,6 +27,7 @@ public static class NineEnvironment
         value is not null && (value.Equals("1", StringComparison.Ordinal) || value.Equals("true", StringComparison.OrdinalIgnoreCase)
             || value.Equals("yes", StringComparison.OrdinalIgnoreCase) || value.Equals("on", StringComparison.OrdinalIgnoreCase));
 
-    internal static IReadOnlyList<string> SplitList(string? value) =>
+    /// <summary>A comma-separated value as a list (empty entries dropped, entries trimmed).</summary>
+    public static IReadOnlyList<string> SplitList(string? value) =>
         value is null ? [] : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

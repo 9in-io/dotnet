@@ -65,6 +65,7 @@ public sealed class AuthClientOptions
 /// </code>
 /// Safe to share: create one and keep it.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA1001", Justification = "The semaphore never allocates a wait handle; the client lives as long as the app.")]
 public sealed class AuthClient
 {
     private static readonly HashSet<string> Reserved = new(StringComparer.Ordinal)
@@ -78,6 +79,8 @@ public sealed class AuthClient
     private readonly ClientAuth _client;
     private readonly TokenVerifier _verifier;
     private readonly INineCache _states;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TokenSet> _clientTokens = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim _clientTokenLock = new(1, 1);
 
     /// <summary>Creates a client. Pass an <see cref="HttpClient"/> from <c>IHttpClientFactory</c>, or none for a shared default.</summary>
     public AuthClient(AuthClientOptions options, HttpClient? httpClient = null)
@@ -269,6 +272,31 @@ public sealed class AuthClient
     }
 
     /// <summary>
+    /// Exchanges an authorization code (with its PKCE verifier) and verifies the ID token, with the nonce when given.
+    /// For frameworks that keep the state and handle the callback themselves, like ASP.NET Core's OpenID Connect
+    /// handler; otherwise use <see cref="HandleCallbackAsync(string, PendingLogin?, CancellationToken)"/>, which also checks state and issuer.
+    /// </summary>
+    public async Task<TokenSet> ExchangeCodeAsync(string code, string redirectUri, string codeVerifier, string? nonce = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(code);
+        ArgumentException.ThrowIfNullOrEmpty(redirectUri);
+        ArgumentException.ThrowIfNullOrEmpty(codeVerifier);
+        var response = await TokenRequestAsync(
+            [new("grant_type", "authorization_code"), new("code", code), new("redirect_uri", redirectUri), new("code_verifier", codeVerifier)],
+            cancellationToken).ConfigureAwait(false);
+        var claims = ClaimSet.Empty;
+        if (response.IdToken is not null)
+        {
+            claims = await _verifier.VerifyIdTokenAsync(response.IdToken, ClientId, nonce, cancellationToken).ConfigureAwait(false);
+        }
+        else if (_options.Scopes.Contains("openid"))
+        {
+            throw new InvalidTokenException("no ID token in the token response");
+        }
+        return ToTokenSet(response, claims);
+    }
+
+    /// <summary>
     /// New tokens from the refresh token. 9in rotates refresh tokens, so keep the returned set (it keeps the
     /// old refresh token and ID token when 9in sends none). A new ID token is verified and must be for the same
     /// user. Throws <c>invalid_grant</c> when the refresh token was revoked or expired: sign the user out.
@@ -374,8 +402,8 @@ public sealed class AuthClient
     }
 
     /// <summary>
-    /// A token for machine-to-machine calls (client credentials grant; confidential applications only).
-    /// Not cached: use <see cref="ClientCredentialsHandler"/> on an <see cref="HttpClient"/> for that.
+    /// A new token for machine-to-machine calls (client credentials grant; confidential applications only).
+    /// Not cached: <see cref="GetClientCredentialsTokenAsync"/> is.
     /// </summary>
     public async Task<TokenSet> ClientCredentialsAsync(string? audience = null, string? scope = null, CancellationToken cancellationToken = default)
     {
@@ -393,6 +421,49 @@ public sealed class AuthClient
             form.Add(new("scope", scope));
         }
         return ToTokenSet(await TokenRequestAsync(form, cancellationToken).ConfigureAwait(false), ClaimSet.Empty);
+    }
+
+    /// <summary>
+    /// A client-credentials token, cached until a minute before it expires (concurrent callers share one
+    /// request). Use it for machine-to-machine calls; <see cref="ClientCredentialsHandler"/> adds it to an
+    /// <see cref="HttpClient"/>'s requests.
+    /// </summary>
+    public async Task<TokenSet> GetClientCredentialsTokenAsync(string? audience = null, string? scope = null, CancellationToken cancellationToken = default)
+    {
+        var key = audience + "|" + scope;
+        if (_clientTokens.TryGetValue(key, out var cached) && !cached.IsExpired(TimeSpan.FromSeconds(60), _time))
+        {
+            return cached;
+        }
+        await _clientTokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_clientTokens.TryGetValue(key, out cached) && !cached.IsExpired(TimeSpan.FromSeconds(60), _time))
+            {
+                return cached;
+            }
+            var token = await ClientCredentialsAsync(audience, scope, cancellationToken).ConfigureAwait(false);
+            _clientTokens[key] = token;
+            return token;
+        }
+        finally
+        {
+            _clientTokenLock.Release();
+        }
+    }
+
+    /// <summary>Drops a cached client-credentials token (after the API refused it).</summary>
+    public void ForgetClientCredentialsToken(string? audience = null, string? scope = null, string? accessToken = null)
+    {
+        var key = audience + "|" + scope;
+        if (accessToken is null)
+        {
+            _clientTokens.TryRemove(key, out _);
+        }
+        else if (_clientTokens.TryGetValue(key, out var cached) && cached.AccessToken == accessToken)
+        {
+            _clientTokens.TryRemove(new KeyValuePair<string, TokenSet>(key, cached));
+        }
     }
 
     /// <summary>

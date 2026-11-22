@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Nine.AspNetCore</AssemblyName>
+    <RootNamespace>Nine.AspNetCore</RootNamespace>
+    <PackageId>9in.AspNetCore</PackageId>
+    <Title>9in for ASP.NET Core</Title>
+    <Description>9in (https://9in.io) for ASP.NET Core, on its own authentication stack: sign-in with the cookie and OpenID Connect handlers preconfigured for 9in (PKCE, /nine/login, /nine/logout, refresh-token rotation), bearer authentication for APIs with every 9in algorithm and hybrid revocation over IDistributedCache, scope policies, webhooks with process-once, and the adapter endpoints for your own user database.</Description>
+    <PackageTags>9in;openid-connect;oidc;oauth2;sso;single-sign-on;jwt;aspnetcore;authentication;sdk</PackageTags>
+    <PackageProjectUrl>https://9in.io/docs/</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <ProjectReference Include="../Nine/Nine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nine.AspNetCore.Tests" />
+  </ItemGroup>
+</Project>

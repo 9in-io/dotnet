@@ -169,7 +169,7 @@ public sealed class FakeOidc
         };
         if (withIdToken)
         {
-            body["id_token"] = IdToken(sub, nonce);
+            body["id_token"] = IdToken(sub, nonce, (string)body["access_token"]!);
         }
         if (withRefresh)
         {
@@ -181,7 +181,7 @@ public sealed class FakeOidc
         return FakeIssuer.Json(body);
     }
 
-    public string IdToken(string sub, string? nonce)
+    public string IdToken(string sub, string? nonce, string? accessToken = null)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var claims = new JsonObject
@@ -192,6 +192,18 @@ public sealed class FakeOidc
         if (nonce is not null)
         {
             claims["nonce"] = nonce;
+        }
+        if (accessToken is not null)
+        {
+            // OIDC at_hash: the left half of the access token's hash (SHA-512 for EdDSA, as 9in does).
+            var input = Encoding.ASCII.GetBytes(accessToken);
+            byte[] hash = Key.Alg switch
+            {
+                "RS384" or "PS384" or "ES384" or "HS384" => SHA384.HashData(input),
+                "RS512" or "PS512" or "HS512" or "EdDSA" => SHA512.HashData(input),
+                _ => SHA256.HashData(input),
+            };
+            claims["at_hash"] = TestJwt.B64(hash[..(hash.Length / 2)]);
         }
         foreach (var (k, v) in Profile)
         {

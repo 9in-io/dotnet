@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nine/Nine.csproj" />
+    <Project Path="src/Nine.AspNetCore/Nine.AspNetCore.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Nine.Tests/Nine.Tests.csproj" />
+    <Project Path="test/Nine.AspNetCore.Tests/Nine.AspNetCore.Tests.csproj" />
+    <Project Path="test/Nine.AspNetCore.TestApp/Nine.AspNetCore.TestApp.csproj" />
+  </Folder>
+</Solution>
