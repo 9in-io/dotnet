@@ -93,7 +93,7 @@ app.Run();
 | `/nine/login?return_to=/dashboard` | Goes to the 9in sign-in page and comes back. Also takes `prompt`, `login_hint` and `locale`. |
 | `/nine/signup` | Goes to the sign-up form. |
 | `/nine/callback` | Finishes the sign-in (served by ASP.NET Core's OpenID Connect handler) and sets the session cookie. |
-| `/nine/logout?return_to=/` | Revokes the refresh token and signs out here and at 9in. Add `local=1` to sign out only here. |
+| `/nine/logout?return_to=/` | Revokes the refresh token and signs out here and at 9in. Add `local=1` to sign out only here. A request the browser marks as coming from another site (`Sec-Fetch-Site`) is refused, so other sites can't sign your users out. |
 
 A signed-out visit to a page that needs a user goes to the sign-in page and comes back; an API call (a
 `fetch` without `Accept: text/html`) gets a 401 instead. `User` holds the ID token's claims with 9in's own

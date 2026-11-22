@@ -26,7 +26,8 @@ First release: two NuGet packages for .NET 8 and .NET 10.
 `9in.AspNetCore` (namespace `Nine.AspNetCore`), on ASP.NET Core's authentication stack:
 
 - `AddNineWebApp()` and `MapNineWebApp()`: the cookie and OpenID Connect handlers preconfigured for 9in,
-  `/nine/login`, `/nine/signup`, `/nine/callback` and `/nine/logout` (revoke + end session), refresh with
+  `/nine/login`, `/nine/signup`, `/nine/callback` and `/nine/logout` (revoke + end session; cross-site
+  requests refused), refresh with
   rotation before the access token expires, and sign-out when 9in refuses the refresh token.
 - `AddNineApi()`: a bearer scheme with 9in's verifier and hybrid revocation over `IDistributedCache`;
   `RequireScope` for minimal APIs, `[RequireScope]` for MVC, and RFC 6750 challenges.
