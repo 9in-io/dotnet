@@ -1,0 +1,17 @@
+<Project>
+  <!--
+    The package README is the repository README with links that work on nuget.org: the logo and
+    LICENSE point at GitHub (nuget.org does not resolve relative paths or render <img> tags).
+  -->
+  <Target Name="NineNuGetReadme" BeforeTargets="GenerateNuspec;_GetPackageFiles;Pack">
+    <PropertyGroup>
+      <_NineReadmeText>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../README.md'))</_NineReadmeText>
+      <_NineReadmeText>$(_NineReadmeText.Replace('&lt;img src="docs/img/logo.png" width="160" alt="9in"/&gt;', '![9in](https://raw.githubusercontent.com/9in-io/dotnet/main/docs/img/logo.png)'))</_NineReadmeText>
+      <_NineReadmeText>$(_NineReadmeText.Replace('](LICENSE)', '](https://github.com/9in-io/dotnet/blob/main/LICENSE)'))</_NineReadmeText>
+      <_NineReadmeText>$(_NineReadmeText.Replace('](CHANGELOG.md)', '](https://github.com/9in-io/dotnet/blob/main/CHANGELOG.md)'))</_NineReadmeText>
+      <_NineReadmeText>$(_NineReadmeText.Replace('](examples/', '](https://github.com/9in-io/dotnet/tree/main/examples/'))</_NineReadmeText>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)nuget" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)nuget/README.md" Lines="$([MSBuild]::Escape($(_NineReadmeText)))" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+</Project>

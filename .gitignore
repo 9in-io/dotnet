@@ -1,0 +1,16 @@
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+# Local settings for the examples and the live tests: never commit secrets.
+appsettings.Development.json
+appsettings.Local.json
+.env
+.env.*

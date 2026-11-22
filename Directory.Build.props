@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <Authors>9in</Authors>
+    <Company>Cubelet Ltd</Company>
+    <Product>9in</Product>
+    <Copyright>Copyright (c) 2026 Cubelet Ltd</Copyright>
+    <RepositoryUrl>https://github.com/9in-io/dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+</Project>

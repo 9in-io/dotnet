@@ -1,0 +1,27 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <IsPackable>true</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>logo.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageReleaseNotes>https://github.com/9in-io/dotnet/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <!-- CA1848/CA1873 (LoggerMessage delegates) and CA2007 (ConfigureAwait) are noise for a library this size; we use ConfigureAwait(false) where it matters. -->
+    <NoWarn>$(NoWarn);CA1848;CA1873;CA2007;CA1716;CA1054;CA1055;CA1056;CA1308</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../docs/img/logo.png" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(IntermediateOutputPath)nuget/README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Nine</AssemblyName>
+    <RootNamespace>Nine</RootNamespace>
+    <PackageId>9in</PackageId>
+    <Title>9in .NET SDK</Title>
+    <Description>Official .NET SDK for 9in (https://9in.io), hosted login, OpenID Connect provider and SSO: sign-in with PKCE and refresh-token rotation, access-token verification for every 9in algorithm (including EdDSA) with hybrid revocation, the Management API, the adapter protocol for your own user database, webhooks, client credentials and the device flow. No dependencies.</Description>
+    <PackageTags>9in;openid-connect;oidc;oauth2;sso;single-sign-on;jwt;pkce;authentication;sdk</PackageTags>
+    <PackageProjectUrl>https://9in.io/docs/</PackageProjectUrl>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nine.Tests" />
+    <InternalsVisibleTo Include="Nine.AspNetCore.Tests" />
+  </ItemGroup>
+</Project>
