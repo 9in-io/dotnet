@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Live end-to-end tests against 9in's sdk-e2e test tenants. Skipped unless NINE_E2E=1; settings come
+    from the file NINE_E2E_ENV points at (E2E_* variables override). Never commit those settings.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../Nine.AspNetCore.TestApp/Nine.AspNetCore.TestApp.csproj" />
+    <ProjectReference Include="../../src/Nine.AspNetCore/Nine.AspNetCore.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+</Project>

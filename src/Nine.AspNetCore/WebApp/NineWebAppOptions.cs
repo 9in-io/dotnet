@@ -25,7 +25,10 @@ public sealed class NineWebAppOptions
     public IList<string> Scopes { get; } = ["openid", "profile", "email", "offline_access"];
     /// <summary>Where the routes live. Default <c>/nine</c>: <c>/nine/login</c>, <c>/nine/signup</c>, <c>/nine/callback</c>, <c>/nine/logout</c>.</summary>
     public string BasePath { get; set; } = "/nine";
-    /// <summary>The callback path. Default <c>{BasePath}/callback</c>; register <c>https://your-app/nine/callback</c> on the application.</summary>
+    /// <summary>
+    /// The callback path. Default: the path of <see cref="RedirectUri"/> when one is configured, else
+    /// <c>{BasePath}/callback</c>; register <c>https://your-app/nine/callback</c> on the application.
+    /// </summary>
     public string? CallbackPath { get; set; }
     /// <summary>Where users land after sign-in when no <c>return_to</c> was given. Default <c>/</c>.</summary>
     public string AfterSignInPath { get; set; } = "/";
@@ -54,5 +57,4 @@ public sealed class NineWebAppOptions
 
     internal string NormalizedBasePath => "/" + BasePath.Trim('/');
 
-    internal string EffectiveCallbackPath => CallbackPath ?? NormalizedBasePath + "/callback";
 }

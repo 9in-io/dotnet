@@ -34,6 +34,9 @@ internal sealed class NineWebApp
         ClientSecret = string.IsNullOrEmpty(Options.ClientSecret ?? shared.ClientSecret) ? null : Options.ClientSecret ?? shared.ClientSecret;
         Audience = Options.Audience ?? shared.Audience;
         RedirectUri = Options.RedirectUri ?? shared.RedirectUri;
+        CallbackPath = Options.CallbackPath
+            ?? (RedirectUri is not null && Uri.TryCreate(RedirectUri, UriKind.Absolute, out var redirect) ? redirect.AbsolutePath : null)
+            ?? Options.NormalizedBasePath + "/callback";
         _time = services.GetRequiredService<TimeProvider>();
         _client = new Lazy<AuthClient>(() => new AuthClient(new AuthClientOptions
         {
@@ -54,6 +57,7 @@ internal sealed class NineWebApp
     public string? ClientSecret { get; }
     public string? Audience { get; }
     public string? RedirectUri { get; }
+    public string CallbackPath { get; }
     public bool AllowInsecureIssuer { get; }
     public AuthClient Client => _client.Value;
     public TimeProvider Time => _time;

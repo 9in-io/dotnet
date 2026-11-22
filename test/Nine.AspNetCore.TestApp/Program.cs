@@ -7,7 +7,17 @@ using Nine.AspNetCore;
 // The app the ASP.NET Core integration tests run (WebApplicationFactory): a web app that signs users in,
 // an API with scopes (minimal APIs and a controller), webhooks and the adapter, all in one.
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddAuthentication().AddNineWebApp(options => options.ErrorPath = builder.Configuration["Test:ErrorPath"]).AddNineApi();
+var config = builder.Configuration;
+builder.Services.AddAuthentication()
+    .AddNineWebApp(options =>
+    {
+        options.ErrorPath = config["Test:ErrorPath"];
+        if (config["Test:RefreshLeewaySeconds"] is { } leeway)
+        {
+            options.RefreshLeeway = TimeSpan.FromSeconds(int.Parse(leeway, System.Globalization.CultureInfo.InvariantCulture));
+        }
+    })
+    .AddNineApi();
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddSingleton<WebhookLog>();
@@ -36,12 +46,12 @@ app.MapGet("/api/orders", (ClaimsPrincipal user, HttpContext context) => Results
 })).RequireScope("orders:read");
 app.MapGet("/api/any", (ClaimsPrincipal user) => user.FindFirstValue("sub")).RequireNineToken();
 app.MapControllers();
-app.MapNineWebhooks().On(WebhookEventTypes.UserCreated, (e, http) =>
+app.MapNineWebhooks(configure: options => options.Path = config["Test:WebhookPath"]).On(WebhookEventTypes.UserCreated, (e, http) =>
 {
     http.RequestServices.GetRequiredService<WebhookLog>().Typed.Add(e.Id);
     return Task.CompletedTask;
 });
-app.MapNineAdapter<TestAdapter>();
+app.MapNineAdapter<TestAdapter>(configure: options => options.PathPrefix = config["Test:AdapterPathPrefix"]);
 app.Run();
 
 public partial class Program;

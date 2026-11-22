@@ -7,5 +7,6 @@
     <Project Path="test/Nine.Tests/Nine.Tests.csproj" />
     <Project Path="test/Nine.AspNetCore.Tests/Nine.AspNetCore.Tests.csproj" />
     <Project Path="test/Nine.AspNetCore.TestApp/Nine.AspNetCore.TestApp.csproj" />
+    <Project Path="test/Nine.E2E/Nine.E2E.csproj" />
   </Folder>
 </Solution>

@@ -60,7 +60,7 @@ internal sealed class NineOpenIdConnectSetup(IServiceProvider services) :
         {
             options.Scope.Add(scope);
         }
-        options.CallbackPath = web.EffectiveCallbackPath;
+        options.CallbackPath = app.CallbackPath;
         options.SignedOutCallbackPath = web.NormalizedBasePath + "/signed-out";
         options.SignInScheme = web.CookieScheme;
         options.SignOutScheme = web.CookieScheme;

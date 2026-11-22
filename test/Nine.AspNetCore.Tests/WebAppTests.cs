@@ -350,6 +350,19 @@ public class WebAppTests
     }
 
     [Fact]
+    public async Task TheCallbackPathFollowsTheConfiguredRedirectUri()
+    {
+        await using var app = new NineAppFactory(new FakeOidc(), new() { ["Nine:RedirectUri"] = "https://localhost/callback" });
+        var browser = app.Browser();
+        var start = await browser.GetAsync("/nine/login?return_to=/me");
+        var callback = new Uri(app.Oidc.Authorize(start.Headers.Location!.ToString()));
+        Assert.Equal("/callback", callback.AbsolutePath);
+        var response = await browser.GetAsync(callback.PathAndQuery);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/me", response.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
     public async Task AConfiguredRedirectUriIsUsedForTheCallbackAndLogout()
     {
         await using var app = new NineAppFactory(new FakeOidc(), new() { ["Nine:RedirectUri"] = "https://app.acme.test/nine/callback" });
