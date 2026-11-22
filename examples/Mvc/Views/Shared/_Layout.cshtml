@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>9in MVC example</title>
+  <style>body { font: 16px system-ui; margin: 2rem auto; max-width: 48rem } td { padding: 2px 8px; border-bottom: 1px solid #ddd }</style>
+</head>
+<body>
+  <nav>
+    <a asp-controller="Home" asp-action="Index">Home</a> ·
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+      <a asp-controller="Home" asp-action="Profile">Profile</a> <text>·</text> <a href="/nine/logout">Sign out</a>
+    }
+    else
+    {
+      <a href="/nine/login?return_to=/Home/Profile">Sign in</a> <text>·</text> <a href="/nine/signup">Sign up</a>
+    }
+  </nav>
+  @RenderBody()
+</body>
+</html>

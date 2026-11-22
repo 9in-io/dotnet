@@ -1,0 +1,9 @@
+<h1>9in MVC example</h1>
+@if (User.Identity?.IsAuthenticated == true)
+{
+  <p>Signed in as <b>@User.FindFirstValue("email")</b>.</p>
+}
+else
+{
+  <p>You're signed out.</p>
+}

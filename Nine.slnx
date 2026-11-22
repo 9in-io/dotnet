@@ -9,4 +9,8 @@
     <Project Path="test/Nine.AspNetCore.TestApp/Nine.AspNetCore.TestApp.csproj" />
     <Project Path="test/Nine.E2E/Nine.E2E.csproj" />
   </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/WebApp/WebApp.csproj" />
+    <Project Path="examples/Mvc/Mvc.csproj" />
+  </Folder>
 </Solution>

@@ -1,0 +1,8 @@
+<h1>Hello @User.Identity!.Name</h1>
+<p>Access token for your API: <code>@ViewData["AccessToken"]</code></p>
+<table>
+  @foreach (var claim in User.Claims)
+  {
+    <tr><td>@claim.Type</td><td>@claim.Value</td></tr>
+  }
+</table>

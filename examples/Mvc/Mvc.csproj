@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- In your own app: <PackageReference Include="9in.AspNetCore" Version="0.1.0" /> -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/Nine.AspNetCore/Nine.AspNetCore.csproj" />
+  </ItemGroup>
+</Project>
